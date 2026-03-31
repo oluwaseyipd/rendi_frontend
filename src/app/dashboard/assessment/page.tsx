@@ -12,10 +12,8 @@ import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/index";
 import { assessmentApi } from "@/lib/api";
 import { extractApiError } from "@/lib/utils";
-import type { AssessmentResponse } from "@/types";
+import { useAssessmentStore } from "@/store/useAssessmentStore";
 
-// Store result globally so result page can read it
-export let lastAssessmentResult: AssessmentResponse | null = null;
 
 const schema = z.object({
   annual_income: z.coerce.number().min(1, "Please enter your annual income"),
@@ -54,6 +52,8 @@ export default function AssessmentPage() {
     },
   });
 
+  const setResult = useAssessmentStore((state) => state.setResult);
+
   const hasCcj = watch("has_ccj");
   const hasMissed = watch("has_missed_payments");
 
@@ -79,7 +79,7 @@ export default function AssessmentPage() {
         has_ccj: data.has_ccj ?? null,
         has_missed_payments: data.has_missed_payments ?? null,
       });
-      lastAssessmentResult = res.data;
+      setResult(res.data);
       router.push("/dashboard/result");
     } catch (err) {
       setApiError(extractApiError(err));

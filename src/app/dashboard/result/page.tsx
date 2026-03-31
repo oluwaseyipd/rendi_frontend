@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, RefreshCw, PiggyBank, TrendingUp, Clock, CheckCircle2, Info } from "lucide-react";
@@ -10,8 +10,9 @@ import BreakdownCard from "@/components/assessment/BreakdownCard";
 import { Button } from "@/components/ui/button";
 import { assessmentApi } from "@/lib/api";
 import { formatCurrency, getStatusBadgeClass } from "@/lib/utils";
-import { lastAssessmentResult } from "@/app/dashboard/assessment/page";
+import { useAssessmentStore } from "@/store/useAssessmentStore";
 import type { Assessment } from "@/types";
+
 
 const BREAKDOWN_META = [
   {
@@ -40,12 +41,14 @@ const BREAKDOWN_META = [
   },
 ];
 
-export default function ResultPage() {
+function ResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [disclaimer, setDisclaimer] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const storeResult = useAssessmentStore((state) => state.result);
 
   useEffect(() => {
     const idParam = searchParams.get("id");
@@ -59,10 +62,10 @@ export default function ResultPage() {
         })
         .catch(() => router.push("/dashboard"))
         .finally(() => setLoading(false));
-    } else if (lastAssessmentResult) {
+    } else if (storeResult) {
       // Fresh submit result
-      setAssessment(lastAssessmentResult.assessment);
-      setDisclaimer(lastAssessmentResult.disclaimer);
+      setAssessment(storeResult.assessment);
+      setDisclaimer(storeResult.disclaimer);
       setLoading(false);
     } else {
       // Fallback: load latest
@@ -205,5 +208,13 @@ export default function ResultPage() {
         </div>
       </DashboardLayout>
     </AuthGuard>
+  );
+}
+
+export default function ResultPage() {
+  return (
+    <Suspense fallback={<div>Loading result...</div>}>
+      <ResultContent />
+    </Suspense>
   );
 }
