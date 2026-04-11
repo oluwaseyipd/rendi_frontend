@@ -14,7 +14,6 @@ import { assessmentApi } from "@/lib/api";
 import { extractApiError } from "@/lib/utils";
 import { useAssessmentStore } from "@/store/useAssessmentStore";
 
-
 const schema = z.object({
   annual_income: z.coerce.number().min(1, "Please enter your annual income"),
   savings: z.coerce.number().min(0, "Please enter your savings amount"),
@@ -35,14 +34,15 @@ export default function AssessmentPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [apiError, setApiError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
-    handleSubmit,
     trigger,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
+    getValues,
+    formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -53,32 +53,39 @@ export default function AssessmentPage() {
   });
 
   const setResult = useAssessmentStore((state) => state.setResult);
-
   const hasCcj = watch("has_ccj");
   const hasMissed = watch("has_missed_payments");
 
+  // ── Step navigation ────────────────────────────────────────────
   const nextStep = async () => {
+    if (step >= STEPS.length) return;
 
-    // Prevent moving forward if already at the last step
-    if (step >= 3) return;
+    const fieldsToValidate: (keyof FormData)[] =
+      step === 1 ? ["annual_income", "savings"] :
+      step === 2 ? ["target_property_price"] :
+      [];
 
-    const fields: (keyof FormData)[] =
-      step === 1
-        ? ["annual_income", "savings"]
-        : step === 2
-        ? ["target_property_price"]
-        : [];
-    const valid = fields.length === 0 || (await trigger(fields));
+    const valid =
+      fieldsToValidate.length === 0 || (await trigger(fieldsToValidate));
+
     if (valid) setStep((s) => s + 1);
   };
 
-  const onSubmit = async (data: FormData) => {
+  const prevStep = () => {
+    if (step > 1) setStep((s) => s - 1);
+  };
 
-    // FIX: Only allow submission if we are actually on the final step
-    if (step !== 3) return;
+  // ── Final submission — called only via onClick, never via form submit ──
+  const handleFinalSubmit = async () => {
+    // Validate the whole form one last time before submitting
+    const valid = await trigger();
+    if (!valid) return;
 
     setApiError("");
+    setIsSubmitting(true);
+
     try {
+      const data = getValues();
       const res = await assessmentApi.submit({
         annual_income: data.annual_income,
         savings: data.savings,
@@ -91,14 +98,16 @@ export default function AssessmentPage() {
       router.push("/dashboard/result");
     } catch (err) {
       setApiError(extractApiError(err));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Prevent default "Enter" key submission behavior for multi-step flow
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && step < 3) {
+  // ── Prevent Enter key from triggering any submission ──────────
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === "Enter") {
       e.preventDefault();
-      nextStep();
+      if (step < STEPS.length) nextStep();
     }
   };
 
@@ -138,16 +147,20 @@ export default function AssessmentPage() {
             ))}
           </div>
 
-          {/* Form card */}
+          {/* Form card
+              IMPORTANT: no onSubmit handler — the <form> tag never submits.
+              All progression and final submission is driven by onClick only. */}
           <div className="bg-white rounded-3xl border border-border shadow-sm p-8 opacity-0 animate-fade-up delay-200">
-            <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown}>
+            <form onKeyDown={handleKeyDown} onSubmit={(e) => e.preventDefault()}>
 
               {/* ── Step 1: Income & savings ── */}
               {step === 1 && (
                 <div className="space-y-6">
                   <div>
                     <h2 className="font-display text-2xl font-medium mb-1">Income & savings</h2>
-                    <p className="text-sm text-muted-foreground">We use these to calculate how much you could borrow and your deposit strength.</p>
+                    <p className="text-sm text-muted-foreground">
+                      We use these to calculate how much you could borrow and your deposit strength.
+                    </p>
                   </div>
                   <FormField
                     label="Annual gross income"
@@ -183,7 +196,9 @@ export default function AssessmentPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="font-display text-2xl font-medium mb-1">Target property</h2>
-                    <p className="text-sm text-muted-foreground">What kind of property are you hoping to buy? This is just an estimate — you can always reassess.</p>
+                    <p className="text-sm text-muted-foreground">
+                      What kind of property are you hoping to buy? This is just an estimate — you can always reassess.
+                    </p>
                   </div>
                   <FormField
                     label="Target property price"
@@ -209,7 +224,9 @@ export default function AssessmentPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="font-display text-2xl font-medium mb-1">Commitments & credit</h2>
-                    <p className="text-sm text-muted-foreground">These are optional. If you skip them, we'll apply a neutral score.</p>
+                    <p className="text-sm text-muted-foreground">
+                      These are optional. If you skip them, we'll apply a neutral score.
+                    </p>
                   </div>
 
                   <FormField
@@ -229,7 +246,8 @@ export default function AssessmentPage() {
                   {/* CCJ question */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">
-                      Any County Court Judgements (CCJ) in the last 6 years? <span className="text-muted-foreground font-normal">(optional)</span>
+                      Any County Court Judgements (CCJ) in the last 6 years?{" "}
+                      <span className="text-muted-foreground font-normal">(optional)</span>
                     </label>
                     <div className="flex gap-3">
                       {[
@@ -266,7 +284,8 @@ export default function AssessmentPage() {
                   {/* Missed payments question */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">
-                      Any missed payments in the last 12 months? <span className="text-muted-foreground font-normal">(optional)</span>
+                      Any missed payments in the last 12 months?{" "}
+                      <span className="text-muted-foreground font-normal">(optional)</span>
                     </label>
                     <div className="flex gap-3">
                       {[
@@ -308,20 +327,38 @@ export default function AssessmentPage() {
                 </div>
               )}
 
-              {/* Navigation buttons */}
+              {/* ── Navigation buttons ─────────────────────────────── */}
               <div className="flex gap-3 mt-8">
                 {step > 1 && (
-                  <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} className="gap-2">
-                    <ArrowLeft className="w-4 h-4" /> Back
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={prevStep}
+                    className="gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
                   </Button>
                 )}
-                {step < 3 ? (
-                  <Button type="button" onClick={nextStep} className="flex-1 gap-2">
-                    Continue <ArrowRight className="w-4 h-4" />
+
+                {step < STEPS.length ? (
+                  <Button
+                    type="button"
+                    onClick={nextStep}
+                    className="flex-1 gap-2"
+                  >
+                    Continue
+                    <ArrowRight className="w-4 h-4" />
                   </Button>
                 ) : (
-                  <Button type="submit" className="flex-1 gap-2" loading={isSubmitting}>
-                    Get my score <ArrowRight className="w-4 h-4" />
+                  <Button
+                    type="button"
+                    onClick={handleFinalSubmit}
+                    className="flex-1 gap-2"
+                    loading={isSubmitting}
+                  >
+                    Get my score
+                    <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}
               </div>
