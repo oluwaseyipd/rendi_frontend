@@ -58,6 +58,10 @@ export default function AssessmentPage() {
   const hasMissed = watch("has_missed_payments");
 
   const nextStep = async () => {
+
+    // Prevent moving forward if already at the last step
+    if (step >= 3) return;
+
     const fields: (keyof FormData)[] =
       step === 1
         ? ["annual_income", "savings"]
@@ -69,6 +73,10 @@ export default function AssessmentPage() {
   };
 
   const onSubmit = async (data: FormData) => {
+
+    // FIX: Only allow submission if we are actually on the final step
+    if (step !== 3) return;
+
     setApiError("");
     try {
       const res = await assessmentApi.submit({
@@ -83,6 +91,14 @@ export default function AssessmentPage() {
       router.push("/dashboard/result");
     } catch (err) {
       setApiError(extractApiError(err));
+    }
+  };
+
+  // Prevent default "Enter" key submission behavior for multi-step flow
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && step < 3) {
+      e.preventDefault();
+      nextStep();
     }
   };
 
@@ -124,7 +140,7 @@ export default function AssessmentPage() {
 
           {/* Form card */}
           <div className="bg-white rounded-3xl border border-border shadow-sm p-8 opacity-0 animate-fade-up delay-200">
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown}>
 
               {/* ── Step 1: Income & savings ── */}
               {step === 1 && (
@@ -295,25 +311,17 @@ export default function AssessmentPage() {
               {/* Navigation buttons */}
               <div className="flex gap-3 mt-8">
                 {step > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep((s) => s - 1)}
-                    className="gap-2"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back
+                  <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} className="gap-2">
+                    <ArrowLeft className="w-4 h-4" /> Back
                   </Button>
                 )}
                 {step < 3 ? (
                   <Button type="button" onClick={nextStep} className="flex-1 gap-2">
-                    Continue
-                    <ArrowRight className="w-4 h-4" />
+                    Continue <ArrowRight className="w-4 h-4" />
                   </Button>
                 ) : (
                   <Button type="submit" className="flex-1 gap-2" loading={isSubmitting}>
-                    Get my score
-                    <ArrowRight className="w-4 h-4" />
+                    Get my score <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}
               </div>
