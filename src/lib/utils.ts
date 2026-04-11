@@ -31,7 +31,7 @@ export function getStatusBadgeClass(status: string): string {
   if (status === "Nearly ready" || status === "Strong position")
     return "bg-rendi-50 text-rendi-700 border-rendi-200";
   if (status === "Getting closer" || status === "Getting there")
-    return "bg-amber-50 text-yellow-700 border-yellow-200";
+    return "bg-yellow-50 text-yellow-700 border-yellow-200";
   return "bg-red-50 text-red-700 border-red-200";
 }
 
