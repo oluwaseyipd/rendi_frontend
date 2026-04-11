@@ -28,9 +28,9 @@ export function getScoreRingColor(score: number): string {
 }
 
 export function getStatusBadgeClass(status: string): string {
-  if (status === "Nearly ready")
+  if (status === "Nearly ready" || status === "Strong position")
     return "bg-rendi-50 text-rendi-700 border-rendi-200";
-  if (status === "Getting closer")
+  if (status === "Getting closer" || status === "Getting there")
     return "bg-amber-50 text-amber-700 border-amber-200";
   return "bg-red-50 text-red-700 border-red-200";
 }
