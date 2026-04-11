@@ -37,7 +37,7 @@ export interface ChangePasswordPayload {
   new_password_confirm: string;
 }
 
-// ─── Assessment ──────────────────────────────────────────────────────────────
+// ─── Assessment ───────────────────────────────────────────────────────────────
 
 export interface AssessmentInputs {
   annual_income: number;
@@ -46,9 +46,16 @@ export interface AssessmentInputs {
   monthly_commitments?: number | null;
   has_ccj?: boolean | null;
   has_missed_payments?: boolean | null;
+  // Phase 1: optional declared saving ability
+  monthly_saving_ability?: number | null;
 }
 
-export type AssessmentStatus = "Early stages" | "Getting closer" | "Nearly ready";
+// Updated stage labels from Phase 1 backend
+export type AssessmentStatus =
+  | "Early stages"
+  | "Building momentum"
+  | "Getting close"
+  | "Strong position";
 
 export interface BreakdownComponent {
   points: number;
@@ -63,6 +70,18 @@ export interface AssessmentBreakdown {
   commitments: BreakdownComponent;
   credit: BreakdownComponent;
 }
+
+// Phase 1: saving simulation scenario
+export interface Simulation {
+  monthly_saving: number;
+  months_to_goal: number;
+  months_saved: number;
+  label: string;
+  summary: string;
+}
+
+// Blocker keys returned by the backend
+export type BlockerKey = "deposit" | "income" | "commitments" | "credit";
 
 export interface Assessment {
   id: number;
@@ -79,6 +98,12 @@ export interface Assessment {
   deposit_gap: string;
   estimated_months: number;
   breakdown: AssessmentBreakdown;
+  // Phase 1 new fields
+  biggest_blocker: BlockerKey;
+  blocker_priority: BlockerKey[];
+  recommendations: string[];
+  simulations: Simulation[];
+  // Legacy — kept for backwards compatibility
   action_plan: string[];
   created_at: string;
 }
@@ -91,6 +116,8 @@ export interface AssessmentListItem {
   target_property_price: string;
   deposit_gap: string;
   estimated_months: number;
+  // Phase 1: now included in list serializer
+  biggest_blocker: BlockerKey;
   created_at: string;
 }
 
