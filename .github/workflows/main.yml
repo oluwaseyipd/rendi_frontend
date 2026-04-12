@@ -2,7 +2,7 @@ name: Deploy to cPanel
 on:
   push:
     branches:
-      - main
+      - dev
 jobs:
   deploy:
     name: 🚀 Deploy via FTP to cPanel
@@ -35,7 +35,7 @@ jobs:
           port: 21
           protocol: ftps
           security: loose
-          server-dir: /
+          server-dir: ./
           local-dir: ./out/
           exclude: |
             **/.git*
