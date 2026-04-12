@@ -2,7 +2,7 @@ name: Deploy to cPanel
 on:
   push:
     branches:
-      - main
+      - dev
 jobs:
   deploy:
     name: 🚀 Deploy via FTP to cPanel
