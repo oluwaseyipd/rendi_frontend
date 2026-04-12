@@ -107,6 +107,7 @@ import type {
   AssessmentResponse,
   Assessment,
   AssessmentListItem,
+  ComparisonResult,
 } from "@/types";
 
 // Auth
@@ -131,10 +132,16 @@ export const assessmentApi = {
   submit: (data: AssessmentInputs) =>
     api.post<AssessmentResponse>("/api/assessments/submit/", data),
 
-  getLatest: () => api.get<AssessmentResponse>("/api/assessments/latest/"),
+  getLatest: () =>
+    api.get<AssessmentResponse>("/api/assessments/latest/"),
 
-  getHistory: () => api.get<AssessmentListItem[]>("/api/assessments/history/"),
+  getHistory: () =>
+    api.get<AssessmentListItem[]>("/api/assessments/history/"),
 
   getDetail: (id: number) =>
     api.get<Assessment>(`/api/assessments/${id}/`),
+
+  // Phase 3: "How you compare" endpoint
+  getComparison: () =>
+    api.get<ComparisonResult>("/api/assessments/compare/"),
 };

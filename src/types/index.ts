@@ -126,6 +126,27 @@ export interface AssessmentResponse {
   assessment: Assessment;
 }
 
+// ─── Phase 3: "How you compare" ───────────────────────────────────────────────
+
+export interface ComparisonResult {
+  // Whether there is enough data to show a real comparison
+  has_data: boolean;
+  // Shown when has_data is false
+  fallback_message: string;
+  // Main percentile statement e.g. "You are ahead of 62% of users."
+  headline: string;
+  headline_pct: number;
+  // Supporting lines
+  subtitle: string;        // "Most users in your income range are 2-3 years away"
+  savings_line: string;    // "People earning similar to you have saved £8,000 on average"
+  deposit_gap_line: string;// "Your deposit gap is smaller than the average user in your group"
+  // Segment context
+  segment_label: string;   // "users earning £40k–£50k"
+  total_users: number;
+  // Pre-written share text for referral flow
+  share_text: string;
+}
+
 // ─── API Errors ───────────────────────────────────────────────────────────────
 
 export interface ApiFieldErrors {
