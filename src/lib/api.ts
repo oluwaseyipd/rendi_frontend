@@ -108,6 +108,7 @@ import type {
   Assessment,
   AssessmentListItem,
   ComparisonResult,
+  ReferralStats,
 } from "@/types";
 
 // Auth
@@ -141,7 +142,17 @@ export const assessmentApi = {
   getDetail: (id: number) =>
     api.get<Assessment>(`/api/assessments/${id}/`),
 
-  // Phase 3: "How you compare" endpoint
   getComparison: () =>
     api.get<ComparisonResult>("/api/assessments/compare/"),
+};
+
+// Phase 4: Referrals
+export const referralApi = {
+  // Creates referral record if it doesn't exist yet, then returns stats
+  generate: () =>
+    api.post<ReferralStats>("/api/referrals/generate/"),
+
+  // Returns existing referral stats (auto-creates if missing)
+  getStats: () =>
+    api.get<ReferralStats>("/api/referrals/stats/"),
 };

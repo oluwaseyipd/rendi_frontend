@@ -11,10 +11,13 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import ScoreRing from "@/components/assessment/ScoreRing";
 import BreakdownCard from "@/components/assessment/BreakdownCard";
 import { Button } from "@/components/ui/button";
-import { assessmentApi } from "@/lib/api";
+import { assessmentApi, referralApi } from "@/lib/api";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAssessmentStore } from "@/store/useAssessmentStore";
-import type { Assessment, BlockerKey, Simulation, ComparisonResult } from "@/types";
+import type {
+  Assessment, BlockerKey, Simulation,
+  ComparisonResult, ReferralStats,
+} from "@/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -88,32 +91,37 @@ function SimulationCard({
   );
 }
 
-// ─── Phase 3: How you compare card ───────────────────────────────────────────
+// ─── Phase 3 + 4: How you compare card with real referral URL ─────────────────
 
 function ComparisonCard({
   comparison,
-  loading,
+  referral,
+  comparisonLoading,
 }: {
   comparison: ComparisonResult | null;
-  loading: boolean;
+  referral: ReferralStats | null;
+  comparisonLoading: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
+  // Phase 4: prefer the personalised referral URL; fall back to comparison share text
+  const shareContent = referral?.referral_url
+    ? `${referral.share_text}`
+    : comparison?.share_text ?? "";
+
   const handleCopyShare = async () => {
-    if (!comparison?.share_text) return;
+    if (!shareContent) return;
     try {
-      await navigator.clipboard.writeText(comparison.share_text);
+      await navigator.clipboard.writeText(shareContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // fallback: do nothing silently
+      // silently fail
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-32 rounded-2xl bg-muted animate-pulse" />
-    );
+  if (comparisonLoading) {
+    return <div className="h-32 rounded-2xl bg-muted animate-pulse" />;
   }
 
   return (
@@ -127,13 +135,11 @@ function ComparisonCard({
       </div>
 
       {!comparison || !comparison.has_data ? (
-        /* ── Fallback state — not enough data yet ── */
         <p className="text-sm text-muted-foreground leading-relaxed">
           {comparison?.fallback_message ||
             "We'll show comparison insights once more users complete their assessment."}
         </p>
       ) : (
-        /* ── Comparison data ── */
         <div className="space-y-3">
           {/* Headline */}
           <p className="text-base font-semibold text-foreground">
@@ -143,19 +149,13 @@ function ComparisonCard({
           {/* Supporting lines */}
           <div className="space-y-1.5">
             {comparison.subtitle && (
-              <p className="text-sm text-muted-foreground">
-                {comparison.subtitle}
-              </p>
+              <p className="text-sm text-muted-foreground">{comparison.subtitle}</p>
             )}
             {comparison.savings_line && (
-              <p className="text-sm text-muted-foreground">
-                {comparison.savings_line}
-              </p>
+              <p className="text-sm text-muted-foreground">{comparison.savings_line}</p>
             )}
             {comparison.deposit_gap_line && (
-              <p className="text-sm text-muted-foreground">
-                {comparison.deposit_gap_line}
-              </p>
+              <p className="text-sm text-muted-foreground">{comparison.deposit_gap_line}</p>
             )}
           </div>
 
@@ -166,8 +166,8 @@ function ComparisonCard({
             </p>
           )}
 
-          {/* Share CTA */}
-          {comparison.share_text && (
+          {/* Phase 4: share CTA uses real referral URL */}
+          {shareContent && (
             <div className="pt-2 border-t border-border">
               <button
                 onClick={handleCopyShare}
@@ -179,23 +179,43 @@ function ComparisonCard({
                 )}
               >
                 {copied ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Copied to clipboard
-                  </>
+                  <><Check className="w-4 h-4" /> Copied to clipboard</>
                 ) : (
-                  <>
-                    <Share2 className="w-4 h-4" />
-                    Invite a friend to compare
-                  </>
+                  <><Share2 className="w-4 h-4" /> Invite a friend to compare</>
                 )}
               </button>
               {!copied && (
                 <p className="text-xs text-center text-muted-foreground mt-2">
-                  Copies a shareable message to your clipboard
+                  Copies your personalised invite link to your clipboard
                 </p>
               )}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Phase 4: if no comparison data yet, still show the share button */}
+      {(!comparison || !comparison.has_data) && shareContent && (
+        <div className="pt-2 border-t border-border">
+          <button
+            onClick={handleCopyShare}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all",
+              copied
+                ? "bg-rendi-50 border-rendi-300 text-rendi-700"
+                : "bg-white border-border text-muted-foreground hover:border-rendi-300 hover:text-rendi-700"
+            )}
+          >
+            {copied ? (
+              <><Check className="w-4 h-4" /> Copied to clipboard</>
+            ) : (
+              <><Share2 className="w-4 h-4" /> Invite a friend to compare</>
+            )}
+          </button>
+          {!copied && (
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Copies your personalised invite link to your clipboard
+            </p>
           )}
         </div>
       )}
@@ -206,18 +226,20 @@ function ComparisonCard({
 // ─── Main result content ──────────────────────────────────────────────────────
 
 function ResultContent() {
-  const router = useRouter();
+  const router       = useRouter();
   const searchParams = useSearchParams();
-  const [assessment, setAssessment] = useState<Assessment | null>(null);
-  const [disclaimer, setDisclaimer] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  // Phase 3: comparison state
-  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
+  const [assessment, setAssessment]             = useState<Assessment | null>(null);
+  const [disclaimer, setDisclaimer]             = useState("");
+  const [loading, setLoading]                   = useState(true);
+  const [comparison, setComparison]             = useState<ComparisonResult | null>(null);
   const [comparisonLoading, setComparisonLoading] = useState(true);
+  // Phase 4: referral stats for the share button
+  const [referral, setReferral]                 = useState<ReferralStats | null>(null);
 
   const storeResult = useAssessmentStore((state) => state.result);
 
+  // Load assessment
   useEffect(() => {
     const idParam = searchParams.get("id");
 
@@ -246,12 +268,17 @@ function ResultContent() {
     }
   }, [router, searchParams]);
 
-  // Phase 3: fetch comparison data independently so it doesn't block the page
+  // Load comparison + referral independently — never blocks the page
   useEffect(() => {
     assessmentApi.getComparison()
       .then((res) => setComparison(res.data))
       .catch(() => setComparison(null))
       .finally(() => setComparisonLoading(false));
+
+    // Phase 4: auto-generate referral so user always has a link
+    referralApi.generate()
+      .then((res) => setReferral(res.data))
+      .catch(() => setReferral(null));
   }, []);
 
   if (loading) {
@@ -281,11 +308,6 @@ function ResultContent() {
   const biggestBlockerLabel =
     assessment.biggest_blocker ? BLOCKER_LABELS[assessment.biggest_blocker] : null;
 
-  const primaryRecommendation =
-    assessment.recommendations?.find(
-      (r) => !r.toLowerCase().startsWith("you can revisit")
-    ) ?? null;
-
   const bestSimIndex =
     assessment.simulations?.length
       ? assessment.simulations.reduce(
@@ -310,7 +332,7 @@ function ResultContent() {
             </Link>
           </div>
 
-          {/* ── Score hero ─────────────────────────────────────────── */}
+          {/* ── Score hero ─────────────────────────────────────── */}
           <div className="rounded-3xl overflow-hidden border border-border shadow-sm opacity-0 animate-fade-up delay-100">
             <div className="bg-gradient-to-br from-rendi-600 to-rendi-700 p-8">
               <div className="flex flex-col md:flex-row items-center gap-8">
@@ -346,7 +368,9 @@ function ResultContent() {
                 {
                   icon: Clock,
                   label: "Est. months",
-                  value: assessment.estimated_months === 0 ? "Ready now" : `${assessment.estimated_months} mo`,
+                  value: assessment.estimated_months === 0
+                    ? "Ready now"
+                    : `${assessment.estimated_months} mo`,
                 },
               ].map((stat) => (
                 <div key={stat.label} className="p-5 text-center">
@@ -358,7 +382,7 @@ function ResultContent() {
             </div>
           </div>
 
-          {/* ── Score breakdown ────────────────────────────────────── */}
+          {/* ── Score breakdown ────────────────────────────────── */}
           <div>
             <div className="mb-1 opacity-0 animate-fade-up delay-200">
               <h2 className="font-display text-xl font-medium">Score breakdown</h2>
@@ -383,7 +407,7 @@ function ResultContent() {
             </div>
           </div>
 
-          {/* ── Your plan ─────────────────────────────────────────── */}
+          {/* ── Your plan ─────────────────────────────────────── */}
           {assessment.recommendations?.length > 0 && (
             <div className="bg-rendi-50 rounded-2xl border border-rendi-200 p-6 opacity-0 animate-fade-up delay-400">
               <h2 className="font-semibold text-rendi-800 mb-1">
@@ -405,7 +429,7 @@ function ResultContent() {
             </div>
           )}
 
-          {/* ── Fastest improvement simulations ───────────────────── */}
+          {/* ── Fastest improvement ────────────────────────────── */}
           {assessment.simulations?.length > 0 && (
             <div className="opacity-0 animate-fade-up delay-500">
               <div className="flex items-center gap-2 mb-3">
@@ -429,19 +453,20 @@ function ResultContent() {
             </div>
           )}
 
-          {/* ── Phase 3: How you compare ───────────────────────────── */}
+          {/* ── Phase 3 + 4: How you compare + referral share ─── */}
           <ComparisonCard
             comparison={comparison}
-            loading={comparisonLoading}
+            referral={referral}
+            comparisonLoading={comparisonLoading}
           />
 
-          {/* ── Disclaimer ─────────────────────────────────────────── */}
+          {/* ── Disclaimer ─────────────────────────────────────── */}
           <div className="flex items-start gap-3 rounded-xl bg-muted/50 border border-border p-4 opacity-0 animate-fade-up delay-500">
             <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-relaxed">{disclaimer}</p>
           </div>
 
-          {/* ── CTAs ───────────────────────────────────────────────── */}
+          {/* ── CTAs ───────────────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-up delay-500">
             <Link href="/dashboard/assessment" className="flex-1">
               <Button className="w-full gap-2">

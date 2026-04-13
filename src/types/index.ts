@@ -24,6 +24,8 @@ export interface RegisterPayload {
   last_name: string;
   password: string;
   password_confirm: string;
+  // Phase 4: optional referral code passed from URL ?ref=
+  referral_code?: string;
 }
 
 export interface LoginPayload {
@@ -46,11 +48,9 @@ export interface AssessmentInputs {
   monthly_commitments?: number | null;
   has_ccj?: boolean | null;
   has_missed_payments?: boolean | null;
-  // Phase 1: optional declared saving ability
   monthly_saving_ability?: number | null;
 }
 
-// Updated stage labels from Phase 1 backend
 export type AssessmentStatus =
   | "Early stages"
   | "Building momentum"
@@ -71,7 +71,6 @@ export interface AssessmentBreakdown {
   credit: BreakdownComponent;
 }
 
-// Phase 1: saving simulation scenario
 export interface Simulation {
   monthly_saving: number;
   months_to_goal: number;
@@ -80,7 +79,6 @@ export interface Simulation {
   summary: string;
 }
 
-// Blocker keys returned by the backend
 export type BlockerKey = "deposit" | "income" | "commitments" | "credit";
 
 export interface Assessment {
@@ -98,12 +96,10 @@ export interface Assessment {
   deposit_gap: string;
   estimated_months: number;
   breakdown: AssessmentBreakdown;
-  // Phase 1 new fields
   biggest_blocker: BlockerKey;
   blocker_priority: BlockerKey[];
   recommendations: string[];
   simulations: Simulation[];
-  // Legacy — kept for backwards compatibility
   action_plan: string[];
   created_at: string;
 }
@@ -116,7 +112,6 @@ export interface AssessmentListItem {
   target_property_price: string;
   deposit_gap: string;
   estimated_months: number;
-  // Phase 1: now included in list serializer
   biggest_blocker: BlockerKey;
   created_at: string;
 }
@@ -129,22 +124,28 @@ export interface AssessmentResponse {
 // ─── Phase 3: "How you compare" ───────────────────────────────────────────────
 
 export interface ComparisonResult {
-  // Whether there is enough data to show a real comparison
   has_data: boolean;
-  // Shown when has_data is false
   fallback_message: string;
-  // Main percentile statement e.g. "You are ahead of 62% of users."
   headline: string;
   headline_pct: number;
-  // Supporting lines
-  subtitle: string;        // "Most users in your income range are 2-3 years away"
-  savings_line: string;    // "People earning similar to you have saved £8,000 on average"
-  deposit_gap_line: string;// "Your deposit gap is smaller than the average user in your group"
-  // Segment context
-  segment_label: string;   // "users earning £40k–£50k"
+  subtitle: string;
+  savings_line: string;
+  deposit_gap_line: string;
+  segment_label: string;
   total_users: number;
-  // Pre-written share text for referral flow
   share_text: string;
+}
+
+// ─── Phase 4: Referrals ───────────────────────────────────────────────────────
+
+export interface ReferralStats {
+  code: string;
+  referral_url: string;
+  invite_count: number;
+  conversion_count: number;
+  conversion_rate: number;
+  share_text: string;
+  created_at: string;
 }
 
 // ─── API Errors ───────────────────────────────────────────────────────────────

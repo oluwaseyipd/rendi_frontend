@@ -1,31 +1,38 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle2, User, Lock, LogOut } from "lucide-react";
+import {
+  CheckCircle2, User, Lock, LogOut, Share2, Copy, Check,
+  Users, TrendingUp,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import AuthGuard from "@/components/auth/AuthGuard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FormField, Card, CardHeader, CardTitle, CardContent, Separator } from "@/components/ui/index";
-import { authApi } from "@/lib/api";
+import {
+  FormField, Card, CardHeader, CardTitle,
+  CardContent, Separator,
+} from "@/components/ui/index";
+import { authApi, referralApi } from "@/lib/api";
 import { useAuthStore } from "@/hooks/useAuthStore";
-import { extractApiError } from "@/lib/utils";
+import { extractApiError, cn } from "@/lib/utils";
+import type { ReferralStats } from "@/types";
 
 // ── Profile form schema ───────────────────────────────────────────
 const profileSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
+  last_name:  z.string().min(1, "Last name is required"),
 });
 type ProfileData = z.infer<typeof profileSchema>;
 
 // ── Password form schema ──────────────────────────────────────────
 const passwordSchema = z
   .object({
-    old_password: z.string().min(1, "Current password is required"),
-    new_password: z
+    old_password:         z.string().min(1, "Current password is required"),
+    new_password:         z
       .string()
       .min(8, "Must be at least 8 characters")
       .regex(/[A-Z]/, "Must contain an uppercase letter")
@@ -38,22 +45,159 @@ const passwordSchema = z
   });
 type PasswordData = z.infer<typeof passwordSchema>;
 
+// ── Phase 4: Referral section component ──────────────────────────
+function ReferralSection() {
+  const [stats, setStats]       = useState<ReferralStats | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [copied, setCopied]     = useState<"link" | "text" | null>(null);
+
+  useEffect(() => {
+    // Auto-generate referral on load so the user always has a link ready
+    referralApi.generate()
+      .then((res) => setStats(res.data))
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleCopy = async (type: "link" | "text") => {
+    if (!stats) return;
+    const value = type === "link" ? stats.referral_url : stats.share_text;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2500);
+    } catch {
+      // silently fail — clipboard API not available
+    }
+  };
+
+  return (
+    <Card className="opacity-0 animate-fade-up delay-300">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-rendi-50 rounded-xl flex items-center justify-center">
+            <Users className="w-4 h-4 text-rendi-600" />
+          </div>
+          <CardTitle className="text-lg">Invite friends</CardTitle>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-5">
+        {loading ? (
+          <div className="space-y-3">
+            <div className="h-10 rounded-xl bg-muted animate-pulse" />
+            <div className="h-8 rounded-xl bg-muted animate-pulse w-2/3" />
+          </div>
+        ) : !stats ? (
+          <p className="text-sm text-muted-foreground">
+            Unable to load your referral link. Please refresh and try again.
+          </p>
+        ) : (
+          <>
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/50 rounded-xl p-4 text-center">
+                <p className="font-display text-2xl font-medium text-foreground">
+                  {stats.invite_count}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Friends invited</p>
+              </div>
+              <div className="bg-muted/50 rounded-xl p-4 text-center">
+                <p className="font-display text-2xl font-medium text-rendi-600">
+                  {stats.conversion_count}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Signed up</p>
+              </div>
+            </div>
+
+            {/* Conversion rate — only show once they have invites */}
+            {stats.invite_count > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TrendingUp className="w-4 h-4 text-rendi-500" />
+                <span>
+                  {stats.conversion_rate}% of your invites have signed up
+                </span>
+              </div>
+            )}
+
+            {/* Referral link */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Your referral link</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-muted/50 border border-border rounded-xl px-3 py-2.5 text-xs text-muted-foreground font-mono truncate">
+                  {stats.referral_url}
+                </div>
+                <button
+                  onClick={() => handleCopy("link")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all flex-shrink-0",
+                    copied === "link"
+                      ? "bg-rendi-50 border-rendi-300 text-rendi-700"
+                      : "bg-white border-border text-muted-foreground hover:border-rendi-300 hover:text-rendi-700"
+                  )}
+                >
+                  {copied === "link" ? (
+                    <><Check className="w-3.5 h-3.5" /> Copied</>
+                  ) : (
+                    <><Copy className="w-3.5 h-3.5" /> Copy</>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Share message */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Share message</p>
+              <div className="bg-muted/50 border border-border rounded-xl p-3 text-sm text-muted-foreground leading-relaxed">
+                {stats.share_text}
+              </div>
+              <button
+                onClick={() => handleCopy("text")}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all",
+                  copied === "text"
+                    ? "bg-rendi-50 border-rendi-300 text-rendi-700"
+                    : "bg-white border-border text-muted-foreground hover:border-rendi-300 hover:text-rendi-700"
+                )}
+              >
+                {copied === "text" ? (
+                  <><Check className="w-4 h-4" /> Copied to clipboard</>
+                ) : (
+                  <><Share2 className="w-4 h-4" /> Copy share message</>
+                )}
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              When someone signs up using your link, they'll be counted as a conversion.
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Main profile page ─────────────────────────────────────────────
 export default function ProfilePage() {
   const router = useRouter();
   const { user, updateUser, logout } = useAuthStore();
   const [profileSuccess, setProfileSuccess] = useState(false);
-  const [profileError, setProfileError] = useState("");
+  const [profileError,   setProfileError]   = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
+  const [passwordError,   setPasswordError]   = useState("");
 
-  // ── Profile form ─────────────────────────────────────────────────
+  // ── Profile form ────────────────────────────────────────────────
   const {
     register: regProfile,
     handleSubmit: handleProfile,
     formState: { errors: profileErrors, isSubmitting: profileSubmitting },
   } = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { first_name: user?.first_name ?? "", last_name: user?.last_name ?? "" },
+    defaultValues: {
+      first_name: user?.first_name ?? "",
+      last_name:  user?.last_name  ?? "",
+    },
   });
 
   const onProfileSubmit = async (data: ProfileData) => {
@@ -69,7 +213,7 @@ export default function ProfilePage() {
     }
   };
 
-  // ── Password form ─────────────────────────────────────────────────
+  // ── Password form ───────────────────────────────────────────────
   const {
     register: regPassword,
     handleSubmit: handlePassword,
@@ -119,7 +263,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* ── Personal info card ──────────────────────────────── */}
+          {/* ── Personal info card ─────────────────────────────── */}
           <Card className="opacity-0 animate-fade-up delay-200">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2.5">
@@ -133,21 +277,20 @@ export default function ProfilePage() {
               <form onSubmit={handleProfile(onProfileSubmit)} className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField label="First name" error={profileErrors.first_name?.message}>
-                    <Input
-                      {...regProfile("first_name")}
-                      error={!!profileErrors.first_name}
-                    />
+                    <Input {...regProfile("first_name")} error={!!profileErrors.first_name} />
                   </FormField>
                   <FormField label="Last name" error={profileErrors.last_name?.message}>
-                    <Input
-                      {...regProfile("last_name")}
-                      error={!!profileErrors.last_name}
-                    />
+                    <Input {...regProfile("last_name")} error={!!profileErrors.last_name} />
                   </FormField>
                 </div>
 
                 <FormField label="Email address" hint="Email cannot be changed">
-                  <Input value={user?.email ?? ""} disabled className="bg-muted/50" readOnly />
+                  <Input
+                    value={user?.email ?? ""}
+                    disabled
+                    className="bg-muted/50"
+                    readOnly
+                  />
                 </FormField>
 
                 {profileError && (
@@ -169,8 +312,11 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* ── Change password card ────────────────────────────── */}
-          <Card className="opacity-0 animate-fade-up delay-300">
+          {/* ── Phase 4: Referral / invite friends ────────────── */}
+          <ReferralSection />
+
+          {/* ── Change password card ───────────────────────────── */}
+          <Card className="opacity-0 animate-fade-up delay-400">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 bg-rendi-50 rounded-xl flex items-center justify-center">
@@ -181,7 +327,10 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePassword(onPasswordSubmit)} className="space-y-5">
-                <FormField label="Current password" error={passwordErrors.old_password?.message}>
+                <FormField
+                  label="Current password"
+                  error={passwordErrors.old_password?.message}
+                >
                   <Input
                     {...regPassword("old_password")}
                     type="password"
@@ -205,7 +354,10 @@ export default function ProfilePage() {
                   />
                 </FormField>
 
-                <FormField label="Confirm new password" error={passwordErrors.new_password_confirm?.message}>
+                <FormField
+                  label="Confirm new password"
+                  error={passwordErrors.new_password_confirm?.message}
+                >
                   <Input
                     {...regPassword("new_password_confirm")}
                     type="password"
@@ -233,8 +385,8 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* ── Sign out ────────────────────────────────────────── */}
-          <div className="opacity-0 animate-fade-up delay-400">
+          {/* ── Sign out ───────────────────────────────────────── */}
+          <div className="opacity-0 animate-fade-up delay-500">
             <Separator className="mb-6" />
             <Button
               variant="outline"
@@ -245,6 +397,7 @@ export default function ProfilePage() {
               Sign out
             </Button>
           </div>
+
         </div>
       </DashboardLayout>
     </AuthGuard>

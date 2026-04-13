@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,8 +15,8 @@ import { extractApiError } from "@/lib/utils";
 const schema = z
   .object({
     first_name: z.string().min(1, "First name is required"),
-    last_name: z.string().min(1, "Last name is required"),
-    email: z.string().email("Enter a valid email address"),
+    last_name:  z.string().min(1, "Last name is required"),
+    email:      z.string().email("Enter a valid email address"),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -31,12 +31,17 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export default function RegisterPage() {
-  const router = useRouter();
+function RegisterContent() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+
+  // Phase 4: read referral code from URL ?ref=
+  const refCode = searchParams.get("ref") ?? undefined;
+
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [apiError, setApiError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [showConfirm,  setShowConfirm]  = useState(false);
+  const [apiError,     setApiError]     = useState("");
+  const [success,      setSuccess]      = useState(false);
 
   const {
     register,
@@ -47,7 +52,11 @@ export default function RegisterPage() {
   const onSubmit = async (data: FormData) => {
     setApiError("");
     try {
-      await authApi.register(data);
+      await authApi.register({
+        ...data,
+        // Phase 4: include referral code if present
+        ...(refCode ? { referral_code: refCode } : {}),
+      });
       setSuccess(true);
       setTimeout(() => router.push("/auth/login"), 2000);
     } catch (err) {
@@ -82,7 +91,16 @@ export default function RegisterPage() {
             <span className="font-display text-2xl font-medium">Rendi</span>
           </Link>
           <h1 className="font-display text-3xl font-medium">Create your account</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Free forever — no credit check required</p>
+          {/* Phase 4: show referral context if they arrived via a referral link */}
+          {refCode ? (
+            <p className="text-muted-foreground mt-2 text-sm">
+              You were invited to compare your home-buying readiness 🏡
+            </p>
+          ) : (
+            <p className="text-muted-foreground mt-2 text-sm">
+              Free forever — no credit check required
+            </p>
+          )}
         </div>
 
         {/* Card */}
@@ -173,7 +191,8 @@ export default function RegisterPage() {
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              By creating an account you agree that all outputs are estimates for information only and not financial advice.
+              By creating an account you agree that all outputs are estimates for
+              information only and not financial advice.
             </p>
           </form>
         </div>
@@ -186,5 +205,13 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div>Loading…</div>}>
+      <RegisterContent />
+    </Suspense>
   );
 }
