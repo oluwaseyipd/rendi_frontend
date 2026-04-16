@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Shield, TrendingUp, Clock } from "lucide-react";
+import { ArrowRight, CheckCircle2, Shield, TrendingUp, Clock, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
 
 const features = [
   {
@@ -26,26 +28,32 @@ const steps = [
   { num: "03", title: "Get your readiness score", desc: "Instant estimate with a clear breakdown." },
 ];
 
+// Subset of FAQs shown on the landing page — links to /faq for the rest
+const LANDING_FAQS = [
+  {
+    q: "Is this financial advice?",
+    a: "No. Rendi provides guidance and estimates, not regulated financial advice. You should seek professional advice before making financial decisions.",
+  },
+  {
+    q: "Does Rendi cost anything?",
+    a: "Rendi is currently free to use.",
+  },
+  {
+    q: "Does Rendi hold or manage my money?",
+    a: "No. Rendi does not hold, store, or transfer any money. We are a planning and tracking tool only.",
+  },
+  {
+    q: "How accurate are the estimates?",
+    a: "Rendi provides estimates based on the information you provide and general market assumptions. These are not financial advice or guaranteed figures, but a guide to help you understand your position.",
+  },
+];
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
+
       {/* ── Nav ──────────────────────────────────────────────── */}
-      <nav className="border-b border-border/50 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-rendi-600 flex items-center justify-center">
-            <span className="text-white font-display font-medium text-sm">R</span>
-          </div>
-          <span className="font-display text-xl font-medium">Rendi</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/auth/login">
-            <Button variant="ghost" size="sm">Sign in</Button>
-          </Link>
-          <Link href="/auth/register">
-            <Button size="sm">Get started</Button>
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="mesh-bg">
@@ -155,7 +163,7 @@ export default function LandingPage() {
             How it works
           </h2>
           <div className="space-y-8">
-            {steps.map((s, i) => (
+            {steps.map((s) => (
               <div key={s.num} className="flex items-start gap-6">
                 <div className="w-12 h-12 rounded-2xl bg-rendi-600 text-white flex items-center justify-center font-display font-medium text-sm flex-shrink-0">
                   {s.num}
@@ -164,11 +172,50 @@ export default function LandingPage() {
                   <h3 className="font-semibold text-foreground mb-1">{s.title}</h3>
                   <p className="text-sm text-muted-foreground">{s.desc}</p>
                 </div>
-                {i < steps.length - 1 && (
-                  <div className="absolute ml-6 mt-12 w-px h-8 bg-border" />
-                )}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ section ──────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-muted/30">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl md:text-4xl font-medium mb-3">
+              Common questions
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Quick answers to what people ask most.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
+            <div className="px-8 divide-y divide-border">
+              {LANDING_FAQS.map((faq) => (
+                <details key={faq.q} className="group py-5">
+                  <summary className="flex items-center justify-between gap-4 cursor-pointer list-none">
+                    <span className="text-sm font-medium text-foreground group-hover:text-rendi-700 transition-colors">
+                      {faq.q}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 group-open:rotate-180 transition-transform duration-200" />
+                  </summary>
+                  <p className="text-sm text-muted-foreground leading-relaxed mt-3 pr-8">
+                    {faq.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/faq"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-rendi-600 hover:underline"
+            >
+              See all questions
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </section>
@@ -192,20 +239,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────── */}
-      <footer className="border-t border-border py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-rendi-600 flex items-center justify-center">
-              <span className="text-white font-display text-xs">R</span>
-            </div>
-            <span className="font-display font-medium">Rendi</span>
-          </div>
-          <p className="text-xs text-muted-foreground text-center max-w-md">
-            All outputs are informational estimates only. Not financial advice, a mortgage offer, or an eligibility decision.
-          </p>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Rendi</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

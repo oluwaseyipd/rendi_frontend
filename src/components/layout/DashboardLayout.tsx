@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home, ClipboardList, History, User, LogOut, Menu, X, ChevronRight
@@ -37,10 +38,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <div className="p-6 border-b border-border">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-rendi-600 flex items-center justify-center">
-              <span className="text-white font-display font-medium text-sm">R</span>
-            </div>
-            <span className="font-display text-xl font-medium text-foreground">Rendi</span>
+            <Image 
+              src="/rendi-logo.png"
+              alt="Rendi Logo"
+              width={100}
+              height={100}
+            /> 
           </Link>
         </div>
 

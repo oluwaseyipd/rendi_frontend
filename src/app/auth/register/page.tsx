@@ -1,6 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -84,11 +85,13 @@ function RegisterContent() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-rendi-600 flex items-center justify-center">
-              <span className="text-white font-display font-medium">R</span>
-            </div>
-            <span className="font-display text-2xl font-medium">Rendi</span>
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-2 ">
+            <Image 
+              src="/rendi-logo.png"
+              alt="Rendi Logo"
+              width={140}
+              height={140}
+            />
           </Link>
           <h1 className="font-display text-3xl font-medium">Create your account</h1>
           {/* Phase 4: show referral context if they arrived via a referral link */}
