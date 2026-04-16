@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "Rendi — Know when you're ready to buy",
   description:
     "Get a personalised home-buying readiness estimate in minutes. No credit checks. No jargon. Just clarity.",
+  icons: {
+    icon: '/rendi-icon.png',
+    apple: '/rendi-icon.png',
+  },
 };
 
 export default function RootLayout({
