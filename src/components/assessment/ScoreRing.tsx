@@ -86,7 +86,7 @@ export default function ScoreRing({
         <span className={cn("font-display font-medium leading-none", textColor, size >= 160 ? "text-4xl" : "text-2xl")}>
           {displayed}
         </span>
-        <span className="text-xs text-muted-foreground mt-1 font-medium">/ 100</span>
+        <span className="text-xs text-white text-muted-foreground mt-1 font-medium">/ 100</span>
       </div>
     </div>
   );
