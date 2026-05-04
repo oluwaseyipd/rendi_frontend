@@ -15,7 +15,7 @@ import { assessmentApi, referralApi } from "@/lib/api";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAssessmentStore } from "@/store/useAssessmentStore";
 import type {
-  Assessment, BlockerKey, Simulation,
+  Assessment, BlockerKey, SavingScenario,
   ComparisonResult, ReferralStats,
 } from "@/types";
 
@@ -58,12 +58,15 @@ const BLOCKER_LABELS: Record<BlockerKey, string> = {
 // ─── Simulation card ──────────────────────────────────────────────────────────
 
 function SimulationCard({
-  sim,
+  scenario,
   isHighlighted,
 }: {
-  sim: Simulation;
+  scenario: SavingScenario;
   isHighlighted: boolean;
 }) {
+  // Price-reduction note — monthly_amount === 0 means no saving rate applies
+  const isPriceNote = scenario.monthly_amount === 0;
+
   return (
     <div
       className={cn(
@@ -74,17 +77,25 @@ function SimulationCard({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-foreground">{sim.label}</p>
+        <p className="text-sm font-semibold text-foreground">
+          {isPriceNote
+            ? "Review your target price"
+            : `Save £${scenario.monthly_amount.toLocaleString()}/month`}
+        </p>
         {isHighlighted && (
           <span className="text-[10px] font-semibold bg-rendi-600 text-white px-2 py-0.5 rounded-full flex-shrink-0">
             Best option
           </span>
         )}
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">{sim.summary}</p>
-      {sim.months_saved > 0 && (
+      {/* message replaces summary */}
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {scenario.message}
+      </p>
+      {/* months_faster_than_baseline replaces months_saved */}
+      {scenario.months_faster_than_baseline > 0 && (
         <p className="text-xs font-semibold text-rendi-600">
-          {sim.months_saved} months faster than your current pace
+          {scenario.months_faster_than_baseline} months faster than your current pace
         </p>
       )}
     </div>
@@ -298,24 +309,35 @@ function ResultContent() {
   if (!assessment) return null;
 
   // Build priority rank map for breakdown cards
+  // blocker_priority is [{component: string, priority_label: string}] ordered worst → best
   const priorityRankMap: Record<string, number> = {};
   if (assessment.blocker_priority?.length) {
-    assessment.blocker_priority.forEach((key, idx) => {
-      priorityRankMap[key] = idx;
+    assessment.blocker_priority.forEach((item, idx) => {
+      priorityRankMap[item.component] = idx;
     });
   }
 
   const biggestBlockerLabel =
     assessment.biggest_blocker ? BLOCKER_LABELS[assessment.biggest_blocker] : null;
 
-  const bestSimIndex =
-    assessment.simulations?.length
-      ? assessment.simulations.reduce(
-          (bestIdx, sim, idx, arr) =>
-            sim.months_saved > arr[bestIdx].months_saved ? idx : bestIdx,
-          0
-        )
-      : -1;
+  // Filter to meaningful scenarios only — suppresses duplicate month outcomes
+  const meaningfulSimulations = assessment.simulations?.filter(
+    (s) => s.is_meaningful
+  ) ?? [];
+
+  // Best = meaningful scenario with highest months_faster_than_baseline
+  // If it's a price-reduction note (monthly_amount === 0), never highlight it
+  const bestSimIndex = meaningfulSimulations.length
+    ? meaningfulSimulations.reduce(
+        (bestIdx, scenario, idx, arr) =>
+          scenario.monthly_amount > 0 &&
+          scenario.months_faster_than_baseline >
+            arr[bestIdx].months_faster_than_baseline
+            ? idx
+            : bestIdx,
+        0
+      )
+    : -1;
 
   return (
     <AuthGuard>
@@ -408,7 +430,7 @@ function ResultContent() {
           </div>
 
           {/* ── Your plan ─────────────────────────────────────── */}
-          {assessment.recommendations?.length > 0 && (
+          {((assessment.recommendations?.length > 0) || (assessment.action_plan?.length > 0)) && (
             <div className="bg-rendi-50 rounded-2xl border border-rendi-200 p-6 opacity-0 animate-fade-up delay-400">
               <h2 className="font-semibold text-rendi-800 mb-1">
                 Your plan to improve your readiness
@@ -417,7 +439,10 @@ function ResultContent() {
                 Based on what you entered — not financial advice.
               </p>
               <ul className="space-y-3">
-                {assessment.recommendations.map((item, i) => (
+                {(assessment.recommendations?.length
+                  ? assessment.recommendations
+                  : assessment.action_plan
+                ).map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm text-rendi-800">
                     <span className="w-5 h-5 rounded-full bg-rendi-200 text-rendi-700 flex items-center justify-center text-xs font-semibold flex-shrink-0 mt-0.5">
                       {i + 1}
@@ -430,7 +455,7 @@ function ResultContent() {
           )}
 
           {/* ── Fastest improvement ────────────────────────────── */}
-          {assessment.simulations?.length > 0 && (
+          {meaningfulSimulations.length > 0 && (
             <div className="opacity-0 animate-fade-up delay-500">
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="w-4 h-4 text-amber-500" />
@@ -438,15 +463,21 @@ function ResultContent() {
                   Fastest way to improve your score
                 </h2>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                See how different saving rates could get you to your deposit goal sooner.
-              </p>
+              {/* Only show the subtitle when these are saving-rate scenarios */}
+              {meaningfulSimulations[0].monthly_amount > 0 && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  See how different saving rates could get you to your deposit goal sooner.
+                </p>
+              )}
               <div className="space-y-3">
-                {assessment.simulations.map((sim, i) => (
+                {meaningfulSimulations.map((scenario, i) => (
                   <SimulationCard
-                    key={sim.monthly_saving}
-                    sim={sim}
-                    isHighlighted={i === bestSimIndex && sim.months_saved > 0}
+                    key={scenario.monthly_amount === 0 ? "price-note" : scenario.monthly_amount}
+                    scenario={scenario}
+                    isHighlighted={
+                      i === bestSimIndex &&
+                      scenario.months_faster_than_baseline > 0
+                    }
                   />
                 ))}
               </div>

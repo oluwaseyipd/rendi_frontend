@@ -71,12 +71,12 @@ export interface AssessmentBreakdown {
   credit: BreakdownComponent;
 }
 
-export interface Simulation {
-  monthly_saving: number;
-  months_to_goal: number;
-  months_saved: number;
-  label: string;
-  summary: string;
+export interface SavingScenario {
+  monthly_amount: number;
+  months_to_close: number;
+  months_faster_than_baseline: number;
+  message: string;
+  is_meaningful: boolean;
 }
 
 export type BlockerKey = "deposit" | "income" | "commitments" | "credit";
