@@ -99,7 +99,7 @@ export interface Assessment {
   biggest_blocker: BlockerKey;
   blocker_priority: BlockerKey[];
   recommendations: string[];
-  simulations: Simulation[];
+  simulations: SavingScenario[];
   action_plan: string[];
   created_at: string;
 }

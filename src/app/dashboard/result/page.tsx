@@ -309,11 +309,11 @@ function ResultContent() {
   if (!assessment) return null;
 
   // Build priority rank map for breakdown cards
-  // blocker_priority is [{component: string, priority_label: string}] ordered worst → best
+  // blocker_priority is a list of blocker keys ordered worst → best
   const priorityRankMap: Record<string, number> = {};
   if (assessment.blocker_priority?.length) {
     assessment.blocker_priority.forEach((item, idx) => {
-      priorityRankMap[item.component] = idx;
+      priorityRankMap[item] = idx;
     });
   }
 
