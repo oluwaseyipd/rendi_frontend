@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
@@ -68,31 +67,63 @@ const FAQS = [
   },
 ];
 
-function FAQItem({ q, a }: { q: string; a: string }) {
+function FAQCard({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-border last:border-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-4 py-5 text-left group"
-      >
-        <span className="text-sm font-medium text-foreground group-hover:text-rendi-700 transition-colors">
+    <button
+      onClick={() => setOpen(!open)}
+      className={cn(
+        "group w-full text-left rounded-2xl border p-6 transition-all duration-200",
+        "bg-white hover:border-rendi-300 hover:shadow-md hover:shadow-rendi-500/5",
+        open
+          ? "border-rendi-300 shadow-md shadow-rendi-500/5"
+          : "border-border shadow-sm"
+      )}
+    >
+      {/* Question row */}
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={cn(
+            "text-sm font-semibold leading-snug transition-colors duration-200",
+            open ? "text-rendi-700" : "text-foreground group-hover:text-rendi-700"
+          )}
+        >
           {q}
         </span>
-        <ChevronDown
+        {/* Animated +/× indicator */}
+        <span
           className={cn(
-            "w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform duration-200",
-            open && "rotate-180"
+            "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 mt-0.5",
+            open
+              ? "border-rendi-400 bg-rendi-50 text-rendi-600 rotate-45"
+              : "border-border text-muted-foreground group-hover:border-rendi-300"
           )}
-        />
-      </button>
-      {open && (
-        <div className="pb-5 pr-8">
-          <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
-        </div>
-      )}
-    </div>
+          aria-hidden
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path
+              d="M5 1v8M1 5h8"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+      </div>
+
+      {/* Answer — always rendered, height animated via max-height */}
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-300 ease-in-out",
+          open ? "max-h-64 mt-3" : "max-h-0"
+        )}
+      >
+        <p className="text-sm text-muted-foreground leading-relaxed text-left">
+          {a}
+        </p>
+      </div>
+    </button>
   );
 }
 
@@ -102,6 +133,7 @@ export default function FAQPage() {
 
       {/* ── Nav ──────────────────────────────────────────────── */}
       <Navbar />
+
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="mesh-bg px-6 py-16 text-center">
         <div className="max-w-2xl mx-auto">
@@ -118,19 +150,17 @@ export default function FAQPage() {
         </div>
       </section>
 
-      {/* ── FAQ list ─────────────────────────────────────────── */}
+      {/* ── FAQ grid ─────────────────────────────────────────── */}
       <section className="py-16 px-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
-            <div className="px-8">
-              {FAQS.map((faq) => (
-                <FAQItem key={faq.q} q={faq.q} a={faq.a} />
-              ))}
-            </div>
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FAQS.map((faq) => (
+              <FAQCard key={faq.q} q={faq.q} a={faq.a} />
+            ))}
           </div>
 
           {/* Still have questions */}
-          <div className="mt-10 text-center">
+          <div className="mt-14 text-center">
             <p className="text-sm text-muted-foreground mb-2">Still have questions?</p>
             <a
               href="mailto:contact@rendi.co.uk"

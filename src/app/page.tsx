@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, CheckCircle2, Shield, TrendingUp, Clock, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Footer from "@/components/Footer";
@@ -96,6 +97,20 @@ export default function LandingPage() {
               </span>
             ))}
           </div>
+
+          {/* Techscaler badge */}
+          <div className="flex flex-col items-center gap-2 mt-10 opacity-0 animate-fade-up delay-500">
+            <p className="text-xs text-muted-foreground tracking-widest uppercase font-medium">
+              Supported by
+            </p>
+            <Image
+              src="/techscaler_logo.png"
+              alt="Techscaler"
+              width={140}
+              height={40}
+              className="object-contain grayscale opacity-70 hover:opacity-100 hover:grayscale-0 transition-all duration-300"
+            />
+          </div>
         </div>
       </section>
 
@@ -159,22 +174,66 @@ export default function LandingPage() {
       {/* ── How it works ─────────────────────────────────────── */}
       <section className="py-20 px-6 bg-white">
         <div className="max-w-4xl mx-auto">
-          <h2 className="font-display text-3xl md:text-4xl font-medium text-center mb-12">
+          <h2 className="font-display text-3xl md:text-4xl font-medium text-center mb-16">
             How it works
           </h2>
-          <div className="space-y-8">
-            {steps.map((s) => (
-              <div key={s.num} className="flex items-start gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-rendi-600 text-white flex items-center justify-center font-display font-medium text-sm flex-shrink-0">
-                  {s.num}
+
+          {/* Desktop — horizontal process */}
+          <div className="hidden md:flex items-start gap-0">
+            {steps.map((s, i) => (
+              <div key={s.num} className="flex-1 flex items-start">
+
+                {/* Step */}
+                <div className="flex-1 flex flex-col items-center text-center px-4">
+                  {/* Number bubble + connector line */}
+                  <div className="relative w-full flex items-center justify-center mb-6">
+                    {/* Left line */}
+                    {i > 0 && (
+                      <div className="absolute right-1/2 top-1/2 -translate-y-1/2 w-1/2 h-px bg-rendi-200" />
+                    )}
+                    {/* Right line */}
+                    {i < steps.length - 1 && (
+                      <div className="absolute left-1/2 top-1/2 -translate-y-1/2 w-1/2 h-px bg-rendi-200" />
+                    )}
+                    {/* Bubble */}
+                    <div className="relative z-10 w-12 h-12 rounded-full bg-rendi-600 text-white flex items-center justify-center font-display font-medium text-sm ring-4 ring-white">
+                      {s.num}
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-2 text-sm leading-snug">
+                    {s.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {s.desc}
+                  </p>
                 </div>
-                <div className="pt-2">
+
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile — vertical with left rail */}
+          <div className="flex md:hidden flex-col">
+            {steps.map((s, i) => (
+              <div key={s.num} className="flex items-start gap-5">
+                {/* Rail */}
+                <div className="flex flex-col items-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-rendi-600 text-white flex items-center justify-center font-display font-medium text-sm ring-4 ring-white">
+                    {s.num}
+                  </div>
+                  {i < steps.length - 1 && (
+                    <div className="w-px flex-1 min-h-[40px] bg-rendi-200 my-2" />
+                  )}
+                </div>
+                {/* Content */}
+                <div className="pb-8 pt-1.5">
                   <h3 className="font-semibold text-foreground mb-1">{s.title}</h3>
                   <p className="text-sm text-muted-foreground">{s.desc}</p>
                 </div>
               </div>
             ))}
           </div>
+
         </div>
       </section>
 
